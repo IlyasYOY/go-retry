@@ -18,18 +18,53 @@ type Retryer[T any] interface {
 	RetryReturn(RetryReturningFunc[T]) (T, error)
 }
 
-func New[T any]() Retryer[T] {
+type RetryConfig struct {
+	MaxRetries RetryCount
+	Delay      time.Duration
+}
+
+type RetryConfigurer func(*RetryConfig)
+
+func New[T any](configurers ...RetryConfigurer) Retryer[T] {
+	conf := &RetryConfig{
+		MaxRetries: MaxRetryCount,
+		Delay:      time.Second,
+	}
+
+	for _, configurer := range configurers {
+		configurer(conf)
+	}
+
+	return &constantRetryer[T]{
+		delay:      conf.Delay,
+		maxRetries: conf.MaxRetries,
+	}
+}
+
+func WithDelay(delay time.Duration) RetryConfigurer {
+	return func(conf *RetryConfig) {
+		conf.Delay = delay
+	}
+}
+
+func WithMaxRetries(maxRetries RetryCount) RetryConfigurer {
+	return func(conf *RetryConfig) {
+		conf.MaxRetries = maxRetries
+	}
+}
+
+func NewUnlimitedEverySecond[T any]() Retryer[T] {
 	return &constantRetryer[T]{}
 }
 
-func NewConstantDelay[T any](delay time.Duration) Retryer[T] {
+func NewUnlimitedConstantDelay[T any](delay time.Duration) Retryer[T] {
 	return &constantRetryer[T]{
 		delay:      delay,
 		maxRetries: MaxRetryCount,
 	}
 }
 
-func NewConstantDelayWithMaxRetries[T any](delay time.Duration, maxRetries RetryCount) Retryer[T] {
+func NewLimitedConstantDelay[T any](delay time.Duration, maxRetries RetryCount) Retryer[T] {
 	return &constantRetryer[T]{
 		delay:      delay,
 		maxRetries: maxRetries,

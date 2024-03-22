@@ -13,9 +13,9 @@ import (
 
 var errTest = errors.New("test error")
 
-func TestNew(t *testing.T) {
+func TestNewUnlimitedConstant(t *testing.T) {
 	t.Parallel()
-	retry := goretry.New[any]()
+	retry := goretry.NewUnlimitedEverySecond[any]()
 
 	if retry == nil {
 		t.Fatal("retry must not be nil")
@@ -24,7 +24,7 @@ func TestNew(t *testing.T) {
 
 func TestNewRetriesInSecondsConstantly(t *testing.T) {
 	t.Parallel()
-	retryer := goretry.New[any]()
+	retryer := goretry.NewUnlimitedEverySecond[any]()
 	failingFunc := failingFuncProducer(1)
 	finishesIn := time.Second * 2
 
@@ -32,7 +32,7 @@ func TestNewRetriesInSecondsConstantly(t *testing.T) {
 }
 
 func TestNewWithCustomStepReturnsNil(t *testing.T) {
-	retryer := goretry.NewConstantDelay[any](time.Second)
+	retryer := goretry.NewUnlimitedConstantDelay[any](time.Second)
 
 	err := retryer.Retry(failingFuncProducer(1))
 	if err != nil {
@@ -43,7 +43,7 @@ func TestNewWithCustomStepReturnsNil(t *testing.T) {
 
 func TestNewWithCustomStepReturnsValue(t *testing.T) {
 	t.Parallel()
-	retryer := goretry.NewConstantDelay[int](time.Second)
+	retryer := goretry.NewUnlimitedConstantDelay[int](time.Second)
 	expected := 10
 
 	result, err := retryer.RetryReturn(failingReturnFuncProducer(1, expected))
@@ -59,7 +59,7 @@ func TestNewWithCustomStepReturnsValue(t *testing.T) {
 
 func TestNewWithCustomStepWaitEnoughTime(t *testing.T) {
 	t.Parallel()
-	retryer := goretry.NewConstantDelay[any](time.Second)
+	retryer := goretry.NewUnlimitedConstantDelay[any](time.Second)
 	failingFunc := failingFuncProducer(1)
 	finishesIn := time.Second * 2
 
@@ -68,7 +68,22 @@ func TestNewWithCustomStepWaitEnoughTime(t *testing.T) {
 
 func TestNewWithCustomStepReturnsCorrectError(t *testing.T) {
 	t.Parallel()
-	retryer := goretry.NewConstantDelayWithMaxRetries[any](time.Second, 2)
+	retryer := goretry.NewLimitedConstantDelay[any](time.Second, 2)
+
+	err := retryer.Retry(failingFuncProducer(3))
+	if err == nil {
+		t.Logf("error must not be nil after retries but was %v", err)
+		t.Fail()
+	}
+	assertErrorNumber(t, err, 3)
+}
+
+func TestNewWithBuilder(t *testing.T) {
+	t.Parallel()
+	retryer := goretry.New[any](
+		goretry.WithDelay(time.Second),
+		goretry.WithMaxRetries(2),
+	)
 
 	err := retryer.Retry(failingFuncProducer(3))
 	if err == nil {
