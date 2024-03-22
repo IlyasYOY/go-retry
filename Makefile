@@ -17,6 +17,10 @@ lint: $(BIN)/golangci-lint
 test: $(BIN)/gotestsum
 	$(BIN)/gotestsum ./...
 
+.PHONY: build 
+build: 
+	go build ./...
+
 .PHONY: test-watch 
 test-watch: $(BIN)/gotestsum
 	$(BIN)/gotestsum --watch -- ./...
