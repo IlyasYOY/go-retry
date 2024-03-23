@@ -30,21 +30,21 @@ func New[T any](configurers ...RetryConfigurer) Retryer[T] {
 	}
 
 	return &retryer[T]{
-		initialDelay:    rc.initialDelay,
-		maxRetries:      rc.maxRetries,
-		delayCalculator: rc.delayCalculator,
+		initialDelay:    rc.InitialDelay,
+		maxRetries:      rc.MaxRetries,
+		delayCalculator: rc.DelayCalculator,
 	}
 }
 
 func WithInitialDelay(delay time.Duration) RetryConfigurer {
 	return func(rc *RetryConfig) {
-		rc.initialDelay = delay
+		rc.InitialDelay = delay
 	}
 }
 
 func WithMaxRetries(maxRetries RetryCount) RetryConfigurer {
 	return func(rc *RetryConfig) {
-		rc.maxRetries = maxRetries
+		rc.MaxRetries = maxRetries
 	}
 }
 
@@ -58,7 +58,7 @@ func WithJittingDelay(around time.Duration) RetryConfigurer {
 
 func WithDelayCalculator(calc DelayCalculator) RetryConfigurer {
 	return func(rc *RetryConfig) {
-		rc.delayCalculator = calc
+		rc.DelayCalculator = calc
 	}
 }
 

@@ -3,17 +3,17 @@ package goretry
 import "time"
 
 type RetryConfig struct {
-	maxRetries      RetryCount
-	initialDelay    time.Duration
-	delayCalculator DelayCalculator
+	MaxRetries      RetryCount
+	InitialDelay    time.Duration
+	DelayCalculator DelayCalculator
 }
 
 type RetryConfigurer func(*RetryConfig)
 
 func NewDefaultRetryConfig() *RetryConfig {
 	return &RetryConfig{
-		maxRetries:      MaxRetryCount,
-		initialDelay:    time.Second,
-		delayCalculator: NewConstantDelayCalculator(),
+		MaxRetries:      MaxRetryCount,
+		InitialDelay:    time.Second,
+		DelayCalculator: NewConstantDelayCalculator(),
 	}
 }
