@@ -1,6 +1,9 @@
 package goretry
 
-import "time"
+import (
+	"math/rand"
+	"time"
+)
 
 type (
 	DelayCalculator func(prevDelay time.Duration) time.Duration
@@ -9,6 +12,14 @@ type (
 func NewIncreasingDelayCalculator(addition time.Duration) DelayCalculator {
 	return func(prevDelay time.Duration) time.Duration {
 		return prevDelay + addition
+	}
+}
+
+func NewJittingDelayCalculator(around time.Duration) DelayCalculator {
+	return func(prevDelay time.Duration) time.Duration {
+		seconds := around.Seconds()
+		deviationValue := seconds * (rand.Float64() * 2 - 1)
+		return prevDelay + time.Duration(deviationValue * float64(time.Second))
 	}
 }
 

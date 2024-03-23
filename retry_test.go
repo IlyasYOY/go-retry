@@ -103,13 +103,28 @@ func TestRetriesWithIncreasingBackoff(t *testing.T) {
 	t.Parallel()
 	retryer := goretry.New[any](
 		goretry.WithInitialDelay(time.Second),
-		goretry.WithIncreasing(time.Second),
+		goretry.WithIncreasingDelay(time.Second),
 	)
 	failingFunc := failingFuncProducer(2)
 	finishesIn := time.Second * 4
 
 	timeRetrying := assertRetriesFinishedIn(t, retryer, failingFunc, finishesIn)
 	if timeRetrying.Seconds() < 3 {
+		t.Fatal("too soon to end retries", timeRetrying)
+	}
+}
+
+func TestRetriesWithJitter(t *testing.T) {
+	t.Parallel()
+	retryer := goretry.New[any](
+		goretry.WithInitialDelay(time.Second),
+		goretry.WithJittingDelay(time.Second / 2),
+	)
+	failingFunc := failingFuncProducer(1)
+	finishesIn := time.Second + 500 * time.Millisecond
+
+	timeRetrying := assertRetriesFinishedIn(t, retryer, failingFunc, finishesIn)
+	if timeRetrying.Seconds() < 0.5 {
 		t.Fatal("too soon to end retries", timeRetrying)
 	}
 }

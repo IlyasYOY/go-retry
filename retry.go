@@ -44,9 +44,15 @@ func WithMaxRetries(maxRetries RetryCount) RetryConfigurer {
 	}
 }
 
-func WithIncreasing(addition time.Duration) RetryConfigurer {
+func WithIncreasingDelay(addition time.Duration) RetryConfigurer {
 	return func(conf *RetryConfig) {
 		conf.delayCalculator = NewIncreasingDelayCalculator(addition)
+	}
+}
+
+func WithJittingDelay(around time.Duration) RetryConfigurer {
+	return func(conf *RetryConfig) {
+		conf.delayCalculator = NewJittingDelayCalculator(around)
 	}
 }
 
