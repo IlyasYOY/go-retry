@@ -81,7 +81,7 @@ func TestNewWithCustomStepReturnsCorrectError(t *testing.T) {
 func TestNewWithBuilder(t *testing.T) {
 	t.Parallel()
 	retryer := goretry.New[any](
-		goretry.WithDelay(time.Second),
+		goretry.WithInitialDelay(time.Second),
 		goretry.WithMaxRetries(2),
 	)
 
@@ -93,6 +93,22 @@ func TestNewWithBuilder(t *testing.T) {
 	assertErrorNumber(t, err, 3)
 }
 
+func TestRetriesWithIncreasingBackoff(t *testing.T) {
+	t.Parallel()
+	retryer := goretry.New[any](
+		goretry.WithInitialDelay(time.Second),
+		goretry.WithMaxRetries(3),
+		goretry.WithIncreasing(time.Second),
+	)
+	failingFunc := failingFuncProducer(2)
+	finishesIn := time.Second * 4
+
+	timeRetrying := assertRetriesFinishedIn(t, retryer, failingFunc, finishesIn)
+	if timeRetrying.Seconds() < 3 { 
+		t.Fatal("too soon to end retries", timeRetrying)
+	}
+}
+
 func assertErrorNumber(t *testing.T, err error, errorNumber goretry.RetryCount) {
 	requiredPrefix := "call #" + fmt.Sprint(errorNumber)
 	errorMessage := err.Error()
@@ -101,13 +117,15 @@ func assertErrorNumber(t *testing.T, err error, errorNumber goretry.RetryCount) 
 	}
 }
 
+// TODO: add returned time checks
 func assertRetriesFinishedIn[T any](
 	t *testing.T,
 	retryer goretry.Retryer[T],
 	failingFunc goretry.RetryFunc,
 	finishesIn time.Duration,
-) {
-	deadline := time.Now().Add(finishesIn)
+) time.Duration {
+	start := time.Now()
+	deadline := start.Add(finishesIn)
 	ctx, cancel := context.WithDeadline(context.Background(), deadline)
 
 	go func() {
@@ -119,6 +137,7 @@ func assertRetriesFinishedIn[T any](
 	if ctx.Err() != context.Canceled {
 		t.Fatal("function took to long to retry")
 	}
+	return time.Now().Sub(start)
 }
 
 func failingReturnFuncProducer[T any](
