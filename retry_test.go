@@ -28,7 +28,10 @@ func TestNewRetriesInSecondsConstantly(t *testing.T) {
 	failingFunc := failingFuncProducer(1)
 	finishesIn := time.Second * 2
 
-	assertRetriesFinishedIn(t, retryer, failingFunc, finishesIn)
+	timeRetrying := assertRetriesFinishedIn(t, retryer, failingFunc, finishesIn)
+	if timeRetrying.Seconds() < 1 { 
+		t.Fatal("too soon to end retries", timeRetrying)
+	}
 }
 
 func TestNewWithCustomStepReturnsNil(t *testing.T) {
@@ -63,7 +66,10 @@ func TestNewWithCustomStepWaitEnoughTime(t *testing.T) {
 	failingFunc := failingFuncProducer(1)
 	finishesIn := time.Second * 2
 
-	assertRetriesFinishedIn(t, retryer, failingFunc, finishesIn)
+	timeRetrying := assertRetriesFinishedIn(t, retryer, failingFunc, finishesIn)
+	if timeRetrying.Seconds() < 1 { 
+		t.Fatal("too soon to end retries", timeRetrying)
+	}
 }
 
 func TestNewWithCustomStepReturnsCorrectError(t *testing.T) {
@@ -97,7 +103,6 @@ func TestRetriesWithIncreasingBackoff(t *testing.T) {
 	t.Parallel()
 	retryer := goretry.New[any](
 		goretry.WithInitialDelay(time.Second),
-		goretry.WithMaxRetries(3),
 		goretry.WithIncreasing(time.Second),
 	)
 	failingFunc := failingFuncProducer(2)
@@ -137,7 +142,7 @@ func assertRetriesFinishedIn[T any](
 	if ctx.Err() != context.Canceled {
 		t.Fatal("function took to long to retry")
 	}
-	return time.Now().Sub(start)
+	return time.Since(start)
 }
 
 func failingReturnFuncProducer[T any](

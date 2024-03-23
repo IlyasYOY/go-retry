@@ -9,8 +9,6 @@ type (
 	RetryReturningFunc[T any] func() (T, error)
 	RetryFunc                 func() error
 	RetryCount                uint16
-
-	delayCalculator func(prevDelay time.Duration) time.Duration
 )
 
 const MaxRetryCount RetryCount = math.MaxUint16
@@ -20,20 +18,8 @@ type Retryer[T any] interface {
 	RetryReturn(RetryReturningFunc[T]) (T, error)
 }
 
-type retryConfig struct {
-	maxRetries      RetryCount
-	initialDelay    time.Duration
-	delayCalculator delayCalculator
-}
-
-type RetryConfigurer func(*retryConfig)
-
 func New[T any](configurers ...RetryConfigurer) Retryer[T] {
-	conf := &retryConfig{
-		maxRetries:      MaxRetryCount,
-		initialDelay:    time.Second,
-		delayCalculator: newConstantDelayCalculator(),
-	}
+	conf := NewDefaultRetryConfig()
 
 	for _, configurer := range configurers {
 		configurer(conf)
@@ -46,33 +32,23 @@ func New[T any](configurers ...RetryConfigurer) Retryer[T] {
 	}
 }
 
+
+
 func WithInitialDelay(delay time.Duration) RetryConfigurer {
-	return func(conf *retryConfig) {
+	return func(conf *RetryConfig) {
 		conf.initialDelay = delay
 	}
 }
 
 func WithMaxRetries(maxRetries RetryCount) RetryConfigurer {
-	return func(conf *retryConfig) {
+	return func(conf *RetryConfig) {
 		conf.maxRetries = maxRetries
 	}
 }
 
 func WithIncreasing(addition time.Duration) RetryConfigurer {
-	return func(conf *retryConfig) {
-		conf.delayCalculator = newIncreasingDelayCalculator(addition)
-	}
-}
-
-func newIncreasingDelayCalculator(addition time.Duration) delayCalculator {
-	return func(prevDelay time.Duration) time.Duration {
-		return prevDelay + addition
-	}
-}
-
-func newConstantDelayCalculator() delayCalculator {
-	return func(prevDelay time.Duration) time.Duration {
-		return prevDelay
+	return func(conf *RetryConfig) {
+		conf.delayCalculator = NewIncreasingDelayCalculator(addition)
 	}
 }
 
@@ -96,7 +72,7 @@ func NewLimitedConstantDelay[T any](delay time.Duration, maxRetries RetryCount) 
 type retryer[T any] struct {
 	initialDelay    time.Duration
 	maxRetries      RetryCount
-	delayCalculator delayCalculator
+	delayCalculator DelayCalculator
 }
 
 func (c *retryer[T]) Retry(fu RetryFunc) error {
