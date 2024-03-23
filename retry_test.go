@@ -29,7 +29,7 @@ func TestNewRetriesInSecondsConstantly(t *testing.T) {
 	finishesIn := time.Second * 2
 
 	timeRetrying := assertRetriesFinishedIn(t, retryer, failingFunc, finishesIn)
-	if timeRetrying.Seconds() < 1 { 
+	if timeRetrying.Seconds() < 1 {
 		t.Fatal("too soon to end retries", timeRetrying)
 	}
 }
@@ -67,7 +67,7 @@ func TestNewWithCustomStepWaitEnoughTime(t *testing.T) {
 	finishesIn := time.Second * 2
 
 	timeRetrying := assertRetriesFinishedIn(t, retryer, failingFunc, finishesIn)
-	if timeRetrying.Seconds() < 1 { 
+	if timeRetrying.Seconds() < 1 {
 		t.Fatal("too soon to end retries", timeRetrying)
 	}
 }
@@ -109,7 +109,7 @@ func TestRetriesWithIncreasingBackoff(t *testing.T) {
 	finishesIn := time.Second * 4
 
 	timeRetrying := assertRetriesFinishedIn(t, retryer, failingFunc, finishesIn)
-	if timeRetrying.Seconds() < 3 { 
+	if timeRetrying.Seconds() < 3 {
 		t.Fatal("too soon to end retries", timeRetrying)
 	}
 }
@@ -122,7 +122,6 @@ func assertErrorNumber(t *testing.T, err error, errorNumber goretry.RetryCount) 
 	}
 }
 
-// TODO: add returned time checks
 func assertRetriesFinishedIn[T any](
 	t *testing.T,
 	retryer goretry.Retryer[T],

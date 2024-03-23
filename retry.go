@@ -32,8 +32,6 @@ func New[T any](configurers ...RetryConfigurer) Retryer[T] {
 	}
 }
 
-
-
 func WithInitialDelay(delay time.Duration) RetryConfigurer {
 	return func(conf *RetryConfig) {
 		conf.initialDelay = delay
