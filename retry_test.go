@@ -13,20 +13,60 @@ import (
 
 var errTest = errors.New("test error")
 
-func TestNewUnlimitedConstant(t *testing.T) {
+func TestUnlimitedRetriesEverySecond(t *testing.T) {
 	t.Parallel()
-	retry := goretry.NewUnlimitedEverySecond[any]()
 
-	if retry == nil {
-		t.Fatal("retry must not be nil")
-	}
+	t.Run("correct wait time", func(t *testing.T) {
+		t.Parallel()
+		retryer := goretry.New[any]()
+		failingFunc := failingFuncProducer(2)
+		finishesIn := time.Second * 3
+
+		timeRetrying := assertRetriesFinishedIn(t, retryer, failingFunc, finishesIn)
+		if timeRetrying.Seconds() < 2 {
+			t.Fatal("too soon to end retries", timeRetrying)
+		}
+	})
+
+	t.Run("returns value after errors are gone", func(t *testing.T) {
+		t.Parallel()
+		retryer := goretry.New[any](
+			goretry.WithInitialDelay(time.Second),
+		)
+
+		err := retryer.Retry(failingFuncProducer(1))
+		if err != nil {
+			t.Logf("error must be nil after retries but was %v", err)
+			t.Fail()
+		}
+	})
+
+	t.Run("retry for value works", func(t *testing.T) {
+		t.Parallel()
+		retryer := goretry.New[int](
+			goretry.WithInitialDelay(time.Second),
+		)
+		expected := 10
+
+		result, err := retryer.RetryReturn(failingReturnFuncProducer(1, expected))
+		if err != nil {
+			t.Logf("error must be nil after retries but was %v", err)
+			t.Fail()
+		}
+		if result != expected {
+			t.Logf("result must be %d", expected)
+			t.Fail()
+		}
+	})
 }
 
-func TestNewRetriesInSecondsConstantly(t *testing.T) {
+func TestWithCustomConstantDelayInfiniteTimes(t *testing.T) {
 	t.Parallel()
-	retryer := goretry.NewUnlimitedEverySecond[any]()
-	failingFunc := failingFuncProducer(1)
-	finishesIn := time.Second * 2
+	retryer := goretry.New[any](
+		goretry.WithInitialDelay(time.Millisecond * 10),
+	)
+	failingFunc := failingFuncProducer(100)
+	finishesIn := time.Second + 100*time.Millisecond
 
 	timeRetrying := assertRetriesFinishedIn(t, retryer, failingFunc, finishesIn)
 	if timeRetrying.Seconds() < 1 {
@@ -34,47 +74,12 @@ func TestNewRetriesInSecondsConstantly(t *testing.T) {
 	}
 }
 
-func TestNewWithCustomStepReturnsNil(t *testing.T) {
-	retryer := goretry.NewUnlimitedConstantDelay[any](time.Second)
-
-	err := retryer.Retry(failingFuncProducer(1))
-	if err != nil {
-		t.Logf("error must be nil after retries but was %v", err)
-		t.Fail()
-	}
-}
-
-func TestNewWithCustomStepReturnsValue(t *testing.T) {
+func TestWithCustomConstantDelayAndRetryLimit(t *testing.T) {
 	t.Parallel()
-	retryer := goretry.NewUnlimitedConstantDelay[int](time.Second)
-	expected := 10
-
-	result, err := retryer.RetryReturn(failingReturnFuncProducer(1, expected))
-	if err != nil {
-		t.Logf("error must be nil after retries but was %v", err)
-		t.Fail()
-	}
-	if result != expected {
-		t.Logf("result must be %d", expected)
-		t.Fail()
-	}
-}
-
-func TestNewWithCustomStepWaitEnoughTime(t *testing.T) {
-	t.Parallel()
-	retryer := goretry.NewUnlimitedConstantDelay[any](time.Second)
-	failingFunc := failingFuncProducer(1)
-	finishesIn := time.Second * 2
-
-	timeRetrying := assertRetriesFinishedIn(t, retryer, failingFunc, finishesIn)
-	if timeRetrying.Seconds() < 1 {
-		t.Fatal("too soon to end retries", timeRetrying)
-	}
-}
-
-func TestNewWithCustomStepReturnsCorrectError(t *testing.T) {
-	t.Parallel()
-	retryer := goretry.NewLimitedConstantDelay[any](time.Second, 2)
+	retryer := goretry.New[any](
+		goretry.WithInitialDelay(time.Second),
+		goretry.WithMaxRetries(2),
+	)
 
 	err := retryer.Retry(failingFuncProducer(3))
 	if err == nil {
@@ -84,7 +89,7 @@ func TestNewWithCustomStepReturnsCorrectError(t *testing.T) {
 	assertErrorNumber(t, err, 3)
 }
 
-func TestNewWithBuilder(t *testing.T) {
+func TestCustomBuilder(t *testing.T) {
 	t.Parallel()
 	retryer := goretry.New[any](
 		goretry.WithInitialDelay(time.Second),
@@ -118,10 +123,10 @@ func TestRetriesWithJitter(t *testing.T) {
 	t.Parallel()
 	retryer := goretry.New[any](
 		goretry.WithInitialDelay(time.Second),
-		goretry.WithJittingDelay(time.Second / 2),
+		goretry.WithJittingDelay(time.Second/2),
 	)
 	failingFunc := failingFuncProducer(1)
-	finishesIn := time.Second + 500 * time.Millisecond
+	finishesIn := time.Second + 500*time.Millisecond
 
 	timeRetrying := assertRetriesFinishedIn(t, retryer, failingFunc, finishesIn)
 	if timeRetrying.Seconds() < 0.5 {

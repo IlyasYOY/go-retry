@@ -18,9 +18,16 @@ func NewIncreasingDelayCalculator(addition time.Duration) DelayCalculator {
 func NewJittingDelayCalculator(around time.Duration) DelayCalculator {
 	return func(prevDelay time.Duration) time.Duration {
 		seconds := around.Seconds()
-		deviationValue := seconds * (rand.Float64()*2 - 1)
-		return prevDelay + time.Duration(deviationValue*float64(time.Second))
+		jit := moveRandomValueAtZeroWithUnitRadius()
+		deviationValueInSeconds := seconds * jit
+		deviationDuration := time.Duration(deviationValueInSeconds * float64(time.Second))
+		return prevDelay + deviationDuration
 	}
+}
+
+func moveRandomValueAtZeroWithUnitRadius() float64 {
+	//nolint:gosec // this is ok for jitting
+	return rand.Float64()*2 - 1
 }
 
 func NewConstantDelayCalculator() DelayCalculator {

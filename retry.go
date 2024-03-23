@@ -5,18 +5,22 @@ import (
 	"time"
 )
 
+const MaxRetryCount RetryCount = math.MaxUint16
+
+// Instance able to Retry a procedure and RetryReturn a function.
+type Retryer[T any] interface {
+	// Method return last retry's error or nil in case of eventual success.
+	Retry(RetryFunc) error
+	// Method return last retry's error and T's default value or nil and T in
+	// case of eventual success.
+	RetryReturn(RetryReturningFunc[T]) (T, error)
+}
+
 type (
 	RetryReturningFunc[T any] func() (T, error)
 	RetryFunc                 func() error
 	RetryCount                uint16
 )
-
-const MaxRetryCount RetryCount = math.MaxUint16
-
-type Retryer[T any] interface {
-	Retry(RetryFunc) error
-	RetryReturn(RetryReturningFunc[T]) (T, error)
-}
 
 func New[T any](configurers ...RetryConfigurer) Retryer[T] {
 	rc := NewDefaultRetryConfig()
@@ -58,23 +62,6 @@ func WithDelayCalculator(calc DelayCalculator) RetryConfigurer {
 	}
 }
 
-func NewUnlimitedEverySecond[T any]() Retryer[T] {
-	return New[T]()
-}
-
-func NewUnlimitedConstantDelay[T any](delay time.Duration) Retryer[T] {
-	return New[T](
-		WithInitialDelay(delay),
-	)
-}
-
-func NewLimitedConstantDelay[T any](delay time.Duration, maxRetries RetryCount) Retryer[T] {
-	return New[T](
-		WithInitialDelay(delay),
-		WithMaxRetries(maxRetries),
-	)
-}
-
 type retryer[T any] struct {
 	initialDelay    time.Duration
 	maxRetries      RetryCount
@@ -100,6 +87,7 @@ func (c *retryer[T]) RetryReturn(fu RetryReturningFunc[T]) (T, error) {
 		}
 
 		res, err = fu()
+		// TODO: Replace raw check with custom predicate
 		if err == nil {
 			return res, nil
 		}
