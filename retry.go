@@ -19,40 +19,42 @@ type Retryer[T any] interface {
 }
 
 func New[T any](configurers ...RetryConfigurer) Retryer[T] {
-	conf := NewDefaultRetryConfig()
+	rc := NewDefaultRetryConfig()
 
 	for _, configurer := range configurers {
-		configurer(conf)
+		configurer(rc)
 	}
 
 	return &retryer[T]{
-		initialDelay:    conf.initialDelay,
-		maxRetries:      conf.maxRetries,
-		delayCalculator: conf.delayCalculator,
+		initialDelay:    rc.initialDelay,
+		maxRetries:      rc.maxRetries,
+		delayCalculator: rc.delayCalculator,
 	}
 }
 
 func WithInitialDelay(delay time.Duration) RetryConfigurer {
-	return func(conf *RetryConfig) {
-		conf.initialDelay = delay
+	return func(rc *RetryConfig) {
+		rc.initialDelay = delay
 	}
 }
 
 func WithMaxRetries(maxRetries RetryCount) RetryConfigurer {
-	return func(conf *RetryConfig) {
-		conf.maxRetries = maxRetries
+	return func(rc *RetryConfig) {
+		rc.maxRetries = maxRetries
 	}
 }
 
 func WithIncreasingDelay(addition time.Duration) RetryConfigurer {
-	return func(conf *RetryConfig) {
-		conf.delayCalculator = NewIncreasingDelayCalculator(addition)
-	}
+	return WithDelayCalculator(NewIncreasingDelayCalculator(addition))
 }
 
 func WithJittingDelay(around time.Duration) RetryConfigurer {
-	return func(conf *RetryConfig) {
-		conf.delayCalculator = NewJittingDelayCalculator(around)
+	return WithDelayCalculator(NewJittingDelayCalculator(around))
+}
+
+func WithDelayCalculator(calc DelayCalculator) RetryConfigurer {
+	return func(rc *RetryConfig) {
+		rc.delayCalculator = calc
 	}
 }
 
@@ -88,10 +90,10 @@ func (c *retryer[T]) Retry(fu RetryFunc) error {
 }
 
 func (c *retryer[T]) RetryReturn(fu RetryReturningFunc[T]) (T, error) {
-	currentRetries := c.maxRetries
-	var err error
 	var res T
+	var err error
 	currentDelay := c.initialDelay
+	currentRetries := c.maxRetries
 	for {
 		if currentRetries == 0 {
 			return res, err
